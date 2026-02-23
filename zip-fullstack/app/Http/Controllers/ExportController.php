@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ExportPdfMail;
 use App\Models\City;
 use App\Models\County;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class ExportController extends Controller
 {
@@ -69,6 +72,43 @@ class ExportController extends Controller
         ]);
 
         return $pdf->download('counties-' . date('Y-m-d-His') . '.pdf');
+    }
+
+    /**
+     * Email counties PDF export
+     */
+    public function countiesEmail(Request $request)
+    {
+        $validated = $request->validateWithBag('emailCountiesExport', [
+            'email' => ['required', 'email'],
+        ]);
+
+        $counties = County::query()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn(County $county) => [
+                'id' => (int) $county->id,
+                'name' => $county->name,
+            ])
+            ->values()
+            ->all();
+
+        $pdf = Pdf::loadView('exports.counties-pdf', [
+            'counties' => $counties,
+            'title' => 'Counties List',
+            'date' => date('Y-m-d H:i:s'),
+        ]);
+
+        $filename = 'counties-' . date('Y-m-d-His') . '.pdf';
+
+        Mail::to($validated['email'])->send(new ExportPdfMail(
+            title: 'Your counties export is ready',
+            bodyText: 'Your counties PDF export is attached to this email.',
+            pdfFilename: $filename,
+            pdfData: $pdf->output()
+        ));
+
+        return redirect()->back()->with('success', 'Email sent successfully to ' . $validated['email'] . '.');
     }
 
     /**
@@ -139,6 +179,47 @@ class ExportController extends Controller
         ]);
 
         return $pdf->download('cities-' . $county->name . '-' . date('Y-m-d-His') . '.pdf');
+    }
+
+    /**
+     * Email cities PDF export
+     */
+    public function citiesEmail(Request $request, int $countyId)
+    {
+        $validated = $request->validateWithBag('emailCitiesExport', [
+            'email' => ['required', 'email'],
+        ]);
+
+        $county = County::query()->find($countyId);
+
+        if (!$county) {
+            return redirect()->back()->withErrors(['error' => 'County not found']);
+        }
+
+        $cities = $this->citiesForCounty($county);
+
+        $countyData = [
+            'id' => (int) $county->id,
+            'name' => $county->name,
+        ];
+
+        $pdf = Pdf::loadView('exports.cities-pdf', [
+            'county' => $countyData,
+            'cities' => $cities,
+            'title' => 'Cities in ' . $county->name,
+            'date' => date('Y-m-d H:i:s'),
+        ]);
+
+        $filename = 'cities-' . $county->name . '-' . date('Y-m-d-His') . '.pdf';
+
+        Mail::to($validated['email'])->send(new ExportPdfMail(
+            title: 'Your city export is ready',
+            bodyText: 'Your PDF export for cities in ' . $county->name . ' is attached to this email.',
+            pdfFilename: $filename,
+            pdfData: $pdf->output()
+        ));
+
+        return redirect()->back()->with('success', 'Email sent successfully to ' . $validated['email'] . '.');
     }
 
     /**
@@ -217,6 +298,51 @@ class ExportController extends Controller
         ]);
 
         return $pdf->download('cities-' . $county->name . '-' . $targetLetter . '-' . date('Y-m-d-His') . '.pdf');
+    }
+
+    /**
+     * Email filtered cities PDF export
+     */
+    public function filteredCitiesEmail(Request $request, int $countyId, string $letter)
+    {
+        $validated = $request->validateWithBag('emailFilteredCitiesExport', [
+            'email' => ['required', 'email'],
+        ]);
+
+        $county = County::query()->find($countyId);
+
+        if (!$county) {
+            return redirect()->back()->withErrors(['error' => 'County not found']);
+        }
+
+        $cities = $this->citiesForCounty($county);
+        $targetLetter = mb_strtoupper($letter, 'UTF-8');
+        $filteredCities = array_values(array_filter($cities, function (array $city) use ($targetLetter) {
+            return mb_strtoupper(mb_substr($city['name'], 0, 1, 'UTF-8'), 'UTF-8') === $targetLetter;
+        }));
+
+        $countyData = [
+            'id' => (int) $county->id,
+            'name' => $county->name,
+        ];
+
+        $pdf = Pdf::loadView('exports.cities-pdf', [
+            'county' => $countyData,
+            'cities' => $filteredCities,
+            'title' => 'Cities in ' . $county->name . ' starting with ' . $targetLetter,
+            'date' => date('Y-m-d H:i:s'),
+        ]);
+
+        $filename = 'cities-' . $county->name . '-' . $targetLetter . '-' . date('Y-m-d-His') . '.pdf';
+
+        Mail::to($validated['email'])->send(new ExportPdfMail(
+            title: 'Your filtered city export is ready',
+            bodyText: 'Your filtered PDF export for cities in ' . $county->name . ' (letter ' . $targetLetter . ') is attached to this email.',
+            pdfFilename: $filename,
+            pdfData: $pdf->output()
+        ));
+
+        return redirect()->back()->with('success', 'Email sent successfully to ' . $validated['email'] . '.');
     }
 
     private function citiesForCounty(County $county): array

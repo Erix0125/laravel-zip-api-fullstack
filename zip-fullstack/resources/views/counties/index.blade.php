@@ -16,6 +16,13 @@
                 <a href="{{ route('export.counties.pdf') }}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
                     Export PDF
                 </a>
+                <button
+                    type="button"
+                    x-data=""
+                    x-on:click.prevent="$dispatch('open-modal', 'email-counties-export')"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    Email PDF
+                </button>
             </div>
         </div>
     </x-slot>
@@ -78,4 +85,30 @@
             </div>
         </div>
     </div>
+
+    <x-modal name="email-counties-export" :show="$errors->emailCountiesExport->isNotEmpty()" focusable>
+        <form method="POST" action="{{ route('export.counties.email') }}" class="p-6">
+            @csrf
+
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Send Counties PDF</h3>
+                <button type="button" x-on:click="$dispatch('close')" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-xl leading-none">×</button>
+            </div>
+
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Enter the destination email address. The PDF export will be attached.
+            </p>
+
+            <div>
+                <x-input-label for="counties_export_email" :value="__('Email Address')" />
+                <x-text-input id="counties_export_email" name="email" type="email" class="mt-1 block w-full" :value="old('email')" required autofocus />
+                <x-input-error :messages="$errors->emailCountiesExport->get('email')" class="mt-2" />
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <x-secondary-button type="button" x-on:click="$dispatch('close')">Cancel</x-secondary-button>
+                <x-primary-button>Send Email</x-primary-button>
+            </div>
+        </form>
+    </x-modal>
 </x-app-layout>

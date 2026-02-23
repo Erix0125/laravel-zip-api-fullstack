@@ -40,10 +40,13 @@ Route::middleware('auth')->group(function () {
     // Export routes
     Route::get('export/counties/csv', [ExportController::class, 'countiesCSV'])->name('export.counties.csv');
     Route::get('export/counties/pdf', [ExportController::class, 'countiesPDF'])->name('export.counties.pdf');
+    Route::post('export/counties/email', [ExportController::class, 'countiesEmail'])->name('export.counties.email');
     Route::get('export/cities/{countyId}/csv', [ExportController::class, 'citiesCSV'])->name('export.cities.csv');
     Route::get('export/cities/{countyId}/pdf', [ExportController::class, 'citiesPDF'])->name('export.cities.pdf');
+    Route::post('export/cities/{countyId}/email', [ExportController::class, 'citiesEmail'])->name('export.cities.email');
     Route::get('export/cities-filtered/{countyId}/{letter}/csv', [ExportController::class, 'filteredCitiesCSV'])->name('export.cities.filtered.csv');
     Route::get('export/cities-filtered/{countyId}/{letter}/pdf', [ExportController::class, 'filteredCitiesPDF'])->name('export.cities.filtered.pdf');
+    Route::post('export/cities-filtered/{countyId}/{letter}/email', [ExportController::class, 'filteredCitiesEmail'])->name('export.cities.filtered.email');
 });
 
 // Public routes - accessible without authentication
